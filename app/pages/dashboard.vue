@@ -38,8 +38,18 @@
           <div :key="displayedCardPatient.id + (isIncoming ? '-incoming' : '-urgent')" class="urgent-card glass-panel" :class="{ 'incoming-style': isIncoming }">
             <div class="urgent-info">
               <div class="urgent-header">
-                <span class="bed-badge">Bed {{ displayedCardPatient.bed }}</span>
-                <span class="time-elapsed">{{ displayedCardPatient.timeElapsed }} yang lalu</span>
+                <div class="header-left">
+                  <span class="bed-badge">Bed {{ displayedCardPatient.bed }}</span>
+                  <span class="time-elapsed">{{ displayedCardPatient.timeElapsed }} yang lalu</span>
+                </div>
+                <!-- <button class="icon-btn delete-btn" @click.stop="handleDelete(displayedCardPatient)" title="Hapus Data Pasien">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    <line x1="10" y1="11" x2="10" y2="17"></line>
+                    <line x1="14" y1="11" x2="14" y2="17"></line>
+                  </svg>
+                </button> -->
               </div>
               <h3 class="patient-name">{{ displayedCardPatient.name }}</h3>
               <p class="patient-status">Posisi saat ini: <strong>{{ displayedCardPatient.position }}</strong></p>
@@ -86,7 +96,17 @@
           <div v-for="patient in paginatedPatients" :key="patient.id" class="patient-card glass-panel" :class="{'needs-action': patient.status === 'warning'}">
             <div class="card-top">
               <span class="bed-num">Bed {{ patient.bed }}</span>
-              <span class="status-dot" :class="patient.status"></span>
+              <div class="card-actions">
+                <span class="status-dot" :class="patient.status"></span>
+                <button class="icon-btn delete-btn" @click.stop="handleDelete(patient)" title="Hapus Data Pasien">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    <line x1="10" y1="11" x2="10" y2="17"></line>
+                    <line x1="14" y1="11" x2="14" y2="17"></line>
+                  </svg>
+                </button>
+              </div>
             </div>
             <div class="card-mid">
               <h4>{{ patient.name }}</h4>
@@ -144,6 +164,27 @@
         </button>
       </div>
     </Transition>
+
+    <!-- Delete Confirmation Dialog -->
+    <Transition name="fade-scale">
+      <div v-if="showDeleteDialog" class="dialog-overlay" @click.self="showDeleteDialog = false">
+        <div class="dialog-content glass-panel">
+          <div class="dialog-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+              <line x1="12" y1="9" x2="12" y2="13"></line>
+              <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+          </div>
+          <h3>Konfirmasi Hapus</h3>
+          <p>Apakah Anda yakin ingin menghapus data pasien <strong class="text-light">{{ patientToDelete?.name }}</strong> di <strong class="text-light">Bed {{ patientToDelete?.bed }}</strong>? Tindakan ini tidak dapat dibatalkan.</p>
+          <div class="dialog-actions">
+            <button class="dialog-btn-cancel" @click="showDeleteDialog = false">Batal</button>
+            <button class="dialog-btn-confirm" @click="confirmDelete">Ya, Hapus</button>
+          </div>
+        </div>
+      </div>
+    </Transition>
   </main>
 </template>
 
@@ -164,7 +205,7 @@ const {
 
 // Pagination logic
 const currentPage = ref(1)
-const itemsPerPage = 4
+const itemsPerPage = 6
 
 const totalPages = computed(() => {
   return Math.ceil(patients.value.length / itemsPerPage)
@@ -197,6 +238,26 @@ const handleSkipUrgent = () => {
     if (popupPatient.value && popupPatient.value.id === patient.id) {
       closePopup()
     }
+  }
+}
+
+const showDeleteDialog = ref(false)
+const patientToDelete = ref(null)
+
+const handleDelete = (patient) => {
+  patientToDelete.value = patient
+  showDeleteDialog.value = true
+}
+
+const confirmDelete = async () => {
+  const patient = patientToDelete.value
+  if (patient) {
+    showDeleteDialog.value = false
+    await patientStore.deletePatient(patient.bed, patient.name)
+    if (popupPatient.value && popupPatient.value.id === patient.id) {
+      closePopup()
+    }
+    patientToDelete.value = null
   }
 }
 
@@ -259,7 +320,7 @@ onMounted(() => {
       triggerAlert(urgentPatient.value)
     }, 500)
   }
-  
+
   patientStore.initRealtimeAndCron()
 })
 
@@ -363,8 +424,14 @@ onUnmounted(() => {
 .urgent-header {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  justify-content: space-between;
   margin-bottom: 1rem;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
 }
 
 .bed-badge {
@@ -576,6 +643,30 @@ onUnmounted(() => {
   box-shadow: 0 0 8px var(--warning);
 }
 
+.card-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.icon-btn.delete-btn {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.25);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.icon-btn.delete-btn:hover {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
 .card-mid h4 {
   font-size: 1.4rem;
   margin-bottom: 0.2rem;
@@ -769,6 +860,113 @@ onUnmounted(() => {
 
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+/* Dialog Styles */
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(5px);
+  z-index: 100;
+}
+
+.dialog-content {
+  width: 90%;
+  max-width: 420px;
+  padding: 2.5rem 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 1rem;
+  border-top: 4px solid var(--error);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+}
+
+.dialog-icon {
+  color: var(--error);
+  background: rgba(239, 68, 68, 0.1);
+  padding: 1.2rem;
+  border-radius: 50%;
+  margin-bottom: 0.5rem;
+}
+
+.dialog-content h3 {
+  font-size: 1.5rem;
+  color: var(--text-light);
+  font-weight: 700;
+}
+
+.dialog-content p {
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin-bottom: 1.5rem;
+  font-size: 1.05rem;
+}
+
+.text-light {
+  color: var(--text-light);
+}
+
+.dialog-actions {
+  display: flex;
+  gap: 1rem;
+  width: 100%;
+}
+
+.dialog-btn-cancel,
+.dialog-btn-confirm {
+  flex: 1;
+  padding: 0.9rem;
+  border-radius: 10px;
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 1.05rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dialog-btn-cancel {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-light);
+}
+
+.dialog-btn-cancel:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.dialog-btn-confirm {
+  background: var(--error);
+  border: none;
+  color: white;
+  box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+}
+
+.dialog-btn-confirm:hover {
+  background: #f87171;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
+}
+
+/* Dialog Transition */
+.fade-scale-enter-active,
+.fade-scale-leave-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fade-scale-enter-from,
+.fade-scale-leave-to {
+  opacity: 0;
+}
+
+.fade-scale-enter-from .dialog-content,
+.fade-scale-leave-to .dialog-content {
+  transform: scale(0.95) translateY(10px);
 }
 
 @media (max-width: 768px) {

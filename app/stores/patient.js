@@ -3,13 +3,13 @@ import { ref, computed } from 'vue'
 
 export const usePatientStore = defineStore('patient', () => {
   const supabase = useSupabaseClient()
-  
+
   // State
   const dbRecords = ref([])
   const isProcessing = ref(false)
   const skippedIds = ref([])
   const isInitialized = ref(false)
-  
+
   let pollInterval = null
   let timeoutChecker = null
   let realtimeChannel = null
@@ -26,10 +26,9 @@ export const usePatientStore = defineStore('patient', () => {
     const date = new Date(isoString)
     const now = new Date()
     const diffMs = now.getTime() - date.getTime()
-    
     const hours = Math.floor(diffMs / (1000 * 60 * 60))
     const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60))
-    
+
     if (hours > 0) return `${hours} jam ${minutes} menit`
     if (minutes > 0) return `${minutes} menit`
     return `Kurang dari 1 menit`
@@ -38,12 +37,12 @@ export const usePatientStore = defineStore('patient', () => {
   // Getters (Computed Properties)
   const allStructuredPatients = computed(() => {
     if (!dbRecords.value) return []
-    
+
     const map = new Map()
     for (const record of dbRecords.value) {
       const existing = map.get(record.bed_number)
       const recordDate = new Date(record.last_repositioned_at)
-      
+
       // Always keep the newest record per bed
       if (!existing || recordDate > new Date(existing.rawLastUpdate)) {
         map.set(record.bed_number, {
@@ -68,10 +67,10 @@ export const usePatientStore = defineStore('patient', () => {
 
   const incomingPatient = computed(() => {
     if (allStructuredPatients.value.length === 0) return null
-    
+
     const okPatients = allStructuredPatients.value.filter(p => !p.urgent)
     if (okPatients.length === 0) return null
-    
+
     // The closest patient to the 2-hour mark is the one with the oldest lastUpdate
     return okPatients.reduce((oldest, p) => {
       return new Date(p.rawLastUpdate) < new Date(oldest.rawLastUpdate) ? p : oldest
@@ -98,7 +97,7 @@ export const usePatientStore = defineStore('patient', () => {
       .from('tb_patient_records')
       .select('*')
       .order('last_repositioned_at', { ascending: true })
-    
+
     if (error) {
       console.error('Error fetching patients:', error)
     } else {
@@ -106,14 +105,18 @@ export const usePatientStore = defineStore('patient', () => {
     }
   }
 
+  // 2 * 60 * 60 * 1000 = 2 jam
+  const TIMEOUT = 6 * 60 * 1000 // 30 menit
+
   const checkTwoHourTimeouts = async () => {
     for (const p of allStructuredPatients.value) {
       if (p.status === 'ok' && !p.urgent && p.rawLastUpdate) {
         const diffMs = new Date() - new Date(p.rawLastUpdate)
-        if (diffMs >= 2 * 60 * 60 * 1000) {
+        if (diffMs >= TIMEOUT) {
           await supabase.from('tb_patient_records')
             .update({ is_urgent: true, status: 'warning' })
             .eq('id', p.id)
+          fetchRecords()
         }
       }
     }
@@ -122,23 +125,23 @@ export const usePatientStore = defineStore('patient', () => {
   const initRealtimeAndCron = async () => {
     if (isInitialized.value) return
     isInitialized.value = true
-    
+
     await fetchRecords()
-    
+
     realtimeChannel = supabase.channel('public:tb_patient_records')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tb_patient_records' }, async () => {
         await fetchRecords()
       })
       .subscribe()
-      
+
     pollInterval = setInterval(() => {
       // Force reactivity update on elapsed times
       dbRecords.value = [...dbRecords.value]
-    }, 60000)
-    
+    }, 1000)
+
     timeoutChecker = setInterval(() => {
       checkTwoHourTimeouts()
-    }, 60000)
+    }, 1000)
   }
 
   const cleanup = () => {
@@ -160,19 +163,19 @@ export const usePatientStore = defineStore('patient', () => {
 
   const takeAction = async (patient, router) => {
     if (!patient || isProcessing.value) return
-    
+
     isProcessing.value = true
     try {
       await supabase.from('tb_patient_records')
-        .update({ 
-          is_urgent: false, 
+        .update({
+          is_urgent: false,
           status: 'ok',
           last_repositioned_at: new Date().toISOString()
         })
         .eq('id', patient.id)
-        
+
       await fetchRecords()
-      
+
       if (router) {
         router.push(`/?patient=${encodeURIComponent(patient.name)}&bed=${encodeURIComponent(patient.bed)}`)
       }
@@ -186,7 +189,7 @@ export const usePatientStore = defineStore('patient', () => {
   const submitNewPatientForm = async (formPayload) => {
     isProcessing.value = true
     let errorMessage = null
-    
+
     try {
       const { error } = await supabase.from('tb_patient_records').insert({
         patient_name: formPayload.patientName,
@@ -197,9 +200,9 @@ export const usePatientStore = defineStore('patient', () => {
         is_urgent: false,
         last_repositioned_at: new Date().toISOString()
       })
-      
+
       if (error) throw error
-      
+
     } catch (error) {
       console.error('Error saving to Supabase:', error)
       errorMessage = 'Gagal menyimpan laporan ke database.'
@@ -207,6 +210,21 @@ export const usePatientStore = defineStore('patient', () => {
       isProcessing.value = false
     }
     return errorMessage
+  }
+
+  const deletePatient = async (bedNumber, patientName) => {
+    isProcessing.value = true
+    try {
+      await supabase.from('tb_patient_records')
+        .delete()
+        .match({ bed_number: bedNumber, patient_name: patientName })
+
+      await fetchRecords()
+    } catch (error) {
+      console.error('Error deleting patient:', error)
+    } finally {
+      isProcessing.value = false
+    }
   }
 
   // Developer Simulation
@@ -239,6 +257,7 @@ export const usePatientStore = defineStore('patient', () => {
     skipUrgent,
     takeAction,
     submitNewPatientForm,
+    deletePatient,
     simulateAlert
   }
 })
