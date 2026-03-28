@@ -1037,12 +1037,66 @@ onUnmounted(() => {
 }
 
 @media (max-width: 768px) {
+  .dashboard-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1.2rem;
+    padding: 1.2rem;
+  }
+
+  .header-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .primary-btn {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .dashboard-title {
+    font-size: 1.4rem;
+    line-height: 1.3;
+    margin-bottom: 0.3rem;
+  }
+
   .urgent-card {
     flex-direction: column;
   }
   
   .urgent-actions {
     width: 100%;
+  }
+
+  .pagination {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1rem;
+    padding: 1rem;
+  }
+  
+  .page-info {
+    width: 100%;
+    text-align: center;
+    order: -1;
+  }
+  
+  .page-btn {
+    flex: 1;
+    justify-content: center;
+    font-size: 0.85rem;
+    padding: 0.6rem 0.5rem;
+  }
+
+  .list-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  
+  .simulate-btn {
+    width: 100%;
+    justify-content: center;
   }
 }
 </style>
