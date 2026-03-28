@@ -267,27 +267,31 @@ let popupTimeout = null
 
 const playAlertSound = () => {
   try {
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)()
-    const oscillator = audioCtx.createOscillator()
-    const gainNode = audioCtx.createGain()
+
+    // const audioCtx = new (window.AudioContext || window.webkitAudioContext)()
+    // const oscillator = audioCtx.createOscillator()
+    // const gainNode = audioCtx.createGain()
     
-    oscillator.connect(gainNode)
-    gainNode.connect(audioCtx.destination)
+    // oscillator.connect(gainNode)
+    // gainNode.connect(audioCtx.destination)
     
-    oscillator.type = 'sine'
+    // oscillator.type = 'sine'
     
-    oscillator.frequency.setValueAtTime(523.25, audioCtx.currentTime)
-    gainNode.gain.setValueAtTime(0, audioCtx.currentTime)
-    gainNode.gain.linearRampToValueAtTime(0.4, audioCtx.currentTime + 0.05)
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3)
+    // oscillator.frequency.setValueAtTime(523.25, audioCtx.currentTime)
+    // gainNode.gain.setValueAtTime(0, audioCtx.currentTime)
+    // gainNode.gain.linearRampToValueAtTime(0.4, audioCtx.currentTime + 0.05)
+    // gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3)
     
-    oscillator.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.3)
-    gainNode.gain.setValueAtTime(0, audioCtx.currentTime + 0.3)
-    gainNode.gain.linearRampToValueAtTime(0.4, audioCtx.currentTime + 0.35)
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.8)
+    // oscillator.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.3)
+    // gainNode.gain.setValueAtTime(0, audioCtx.currentTime + 0.3)
+    // gainNode.gain.linearRampToValueAtTime(0.4, audioCtx.currentTime + 0.35)
+    // gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.8)
     
-    oscillator.start(audioCtx.currentTime)
-    oscillator.stop(audioCtx.currentTime + 1)
+    // oscillator.start(audioCtx.currentTime)
+    // oscillator.stop(audioCtx.currentTime + 1)
+
+    const audio = new Audio('https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg')
+    audio.play().catch(e => console.warn('Audio blocked by browser auto-play policy:', e))
   } catch(e) {
     console.warn("Audio not supported or blocked", e)
   }
