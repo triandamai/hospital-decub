@@ -509,6 +509,8 @@ onUnmounted(() => {
   font-weight: 600;
   font-size: 0.9rem;
   border: 1px solid rgba(239, 68, 68, 0.3);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .time-elapsed {
@@ -1066,6 +1068,15 @@ onUnmounted(() => {
   
   .urgent-actions {
     width: 100%;
+  }
+
+  .urgent-header {
+    flex-wrap: wrap;
+  }
+  
+  .header-left {
+    flex-wrap: wrap;
+    gap: 0.5rem;
   }
 
   .pagination {
