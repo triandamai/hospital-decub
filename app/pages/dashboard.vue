@@ -1,4 +1,7 @@
 <template>
+  <audio id="alarm" ref="alarm">
+    <source src="/alarm_clock.ogg">
+  </audio>
   <main class="dashboard-wrapper">
     <!-- Processing Overlay -->
     <div v-if="isProcessing" class="loading-overlay">
@@ -12,10 +15,21 @@
 
     <header class="dashboard-header glass-panel">
       <div>
-        <h1 class="dashboard-title">Dashboard Ruangan</h1>
+        <h1 class="dashboard-title">Dashboard Monitoring Pasien</h1>
         <p class="dashboard-subtitle">Teratai 2 Selatan</p>
       </div>
-      <div>
+      <div class="header-actions">
+        <button class="audio-toggle-btn" @click="forceUnlockAudio" :class="{ 'unlocked': audioUnlocked }" title="Status Suara Peringatan">
+          <svg v-if="audioUnlocked" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+          </svg>
+          <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+            <line x1="23" y1="9" x2="17" y2="15"></line>
+            <line x1="17" y1="9" x2="23" y2="15"></line>
+          </svg>
+        </button>
         <NuxtLink to="/" class="primary-btn">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -207,6 +221,37 @@ const {
 const currentPage = ref(1)
 const itemsPerPage = 6
 
+const alarm = ref(null)
+const audioUnlocked = ref(false)
+
+const triggerHiddenAudioUnlock = () => {
+  if (audioUnlocked.value || !alarm.value) return
+  alarm.value.muted = true
+  alarm.value.play().then(() => {
+    alarm.value.pause()
+    alarm.value.currentTime = 0
+    alarm.value.muted = false
+    audioUnlocked.value = true
+  }).catch(e => {
+    // Expected to fail if no direct interaction occurred yet
+  })
+}
+
+const forceUnlockAudio = () => {
+  if (!alarm.value) return
+  if (!audioUnlocked.value) {
+    alarm.value.muted = false
+    alarm.value.play().then(() => {
+      alarm.value.pause()
+      alarm.value.currentTime = 0
+      audioUnlocked.value = true
+    })
+  } else {
+    // Unchecking will effectively treat as muted state conceptually
+    audioUnlocked.value = false
+  }
+}
+
 const totalPages = computed(() => {
   return Math.ceil(patients.value.length / itemsPerPage)
 })
@@ -267,33 +312,16 @@ let popupTimeout = null
 
 const playAlertSound = () => {
   try {
-
-    // const audioCtx = new (window.AudioContext || window.webkitAudioContext)()
-    // const oscillator = audioCtx.createOscillator()
-    // const gainNode = audioCtx.createGain()
-    
-    // oscillator.connect(gainNode)
-    // gainNode.connect(audioCtx.destination)
-    
-    // oscillator.type = 'sine'
-    
-    // oscillator.frequency.setValueAtTime(523.25, audioCtx.currentTime)
-    // gainNode.gain.setValueAtTime(0, audioCtx.currentTime)
-    // gainNode.gain.linearRampToValueAtTime(0.4, audioCtx.currentTime + 0.05)
-    // gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3)
-    
-    // oscillator.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.3)
-    // gainNode.gain.setValueAtTime(0, audioCtx.currentTime + 0.3)
-    // gainNode.gain.linearRampToValueAtTime(0.4, audioCtx.currentTime + 0.35)
-    // gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.8)
-    
-    // oscillator.start(audioCtx.currentTime)
-    // oscillator.stop(audioCtx.currentTime + 1)
-
-    const audio = new Audio('https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg')
-    audio.play().catch(e => console.warn('Audio blocked by browser auto-play policy:', e))
+    if (alarm.value) {
+      if (audioUnlocked.value) {
+        alarm.value.currentTime = 0
+        alarm.value.play().catch(e => console.warn('Peringatan audio diblokir. Harap klik tombol un-mute.', e))
+      } else {
+        console.warn('Sistem audio belum mendapat izin interaksi pengguna.')
+      }
+    }
   } catch(e) {
-    console.warn("Audio not supported or blocked", e)
+    console.warn("Audio tidak didukung", e)
   }
 }
 
@@ -319,6 +347,10 @@ watch(urgentPatient, (newVal, oldVal) => {
 })
 
 onMounted(() => {
+  // Bind silent unlock listener to any document click
+  window.addEventListener('click', triggerHiddenAudioUnlock, { once: true })
+  window.addEventListener('keydown', triggerHiddenAudioUnlock, { once: true })
+  
   if (urgentPatient.value) {
     setTimeout(() => {
       triggerAlert(urgentPatient.value)
@@ -329,6 +361,8 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  window.removeEventListener('click', triggerHiddenAudioUnlock)
+  window.removeEventListener('keydown', triggerHiddenAudioUnlock)
   patientStore.cleanup()
 })
 </script>
@@ -351,6 +385,35 @@ onUnmounted(() => {
   align-items: center;
   padding: 1.5rem 2rem;
   animation: slideDown 0.6s ease-out;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.audio-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.8rem;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 10px;
+  color: #fca5a5;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.audio-toggle-btn.unlocked {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.3);
+  color: #6ee7b7;
+}
+
+.audio-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .dashboard-title {
