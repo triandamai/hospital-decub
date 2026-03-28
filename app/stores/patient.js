@@ -105,8 +105,8 @@ export const usePatientStore = defineStore('patient', () => {
     }
   }
 
-  // 2 * 60 * 60 * 1000 = 2 jam
-  const TIMEOUT = 6 * 60 * 1000 // 30 menit
+  const TIMEOUT = 2 * 60 * 60 * 1000 // 2 jam
+  // const TIMEOUT = 6 * 60 * 1000 // 30 menit
 
   const checkTwoHourTimeouts = async () => {
     for (const p of allStructuredPatients.value) {
