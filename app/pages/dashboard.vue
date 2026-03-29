@@ -1,1113 +1,1886 @@
 <template>
-  <audio id="alarm" ref="alarm">
-    <source src="/alarm_clock.ogg">
-  </audio>
-  <main class="dashboard-wrapper">
-    <!-- Processing Overlay -->
-    <div v-if="isProcessing" class="loading-overlay">
-      <div class="spinner"></div>
-      <p>Memproses tindakan...</p>
-    </div>
-
-    <Head>
-      <Title>Dashboard | Monitoring Reposisi Pasien</Title>
-    </Head>
-
-    <header class="dashboard-header glass-panel">
-      <div>
-        <h1 class="dashboard-title">Dashboard Monitoring Pasien</h1>
-        <p class="dashboard-subtitle">Teratai 2 Selatan</p>
-      </div>
-      <div class="header-actions">
-        <button class="audio-toggle-btn" @click="forceUnlockAudio" :class="{ 'unlocked': audioUnlocked }" title="Status Suara Peringatan">
-          <svg v-if="audioUnlocked" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
-          </svg>
-          <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-            <line x1="23" y1="9" x2="17" y2="15"></line>
-            <line x1="17" y1="9" x2="23" y2="15"></line>
-          </svg>
-        </button>
-        <NuxtLink to="/" class="primary-btn">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19"></line>
-            <line x1="5" y1="12" x2="19" y2="12"></line>
-          </svg>
-          Laporan Baru
-        </NuxtLink>
-      </div>
-    </header>
-
-    <div class="dashboard-content">
-      <!-- Action Card -->
-      <section v-if="displayedCardPatient" class="action-section">
-        <h2 class="section-title">
-          <span class="status-dot" :class="{ 'pulse': !isIncoming, 'pulse-incoming': isIncoming }"></span>
-          {{ isIncoming ? 'Reposisi Berikutnya (Incoming)' : 'Perlu Tindakan Segera' }}
-        </h2>
-        
-        <Transition name="fade-slide" mode="out-in">
-          <div :key="displayedCardPatient.id + (isIncoming ? '-incoming' : '-urgent')" class="urgent-card glass-panel" :class="{ 'incoming-style': isIncoming }">
-            <div class="urgent-info">
-              <div class="urgent-header">
-                <div class="header-left">
-                  <span class="bed-badge">Bed {{ displayedCardPatient.bed }}</span>
-                  <span class="time-elapsed">{{ displayedCardPatient.timeElapsed }} yang lalu</span>
-                </div>
-                <!-- <button class="icon-btn delete-btn" @click.stop="handleDelete(displayedCardPatient)" title="Hapus Data Pasien">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="3 6 5 6 21 6"></polyline>
-                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                    <line x1="10" y1="11" x2="10" y2="17"></line>
-                    <line x1="14" y1="11" x2="14" y2="17"></line>
-                  </svg>
-                </button> -->
-              </div>
-              <h3 class="patient-name">{{ displayedCardPatient.name }}</h3>
-              <p class="patient-status">Posisi saat ini: <strong>{{ displayedCardPatient.position }}</strong></p>
-              <p class="patient-warning" v-if="!isIncoming">Waktunya reposisi pasien untuk mencegah dekubitus.</p>
-              <p class="patient-warning" v-else>Mendekati batas waktu reposisi selanjutnya.</p>
-            </div>
-            
-            <div class="urgent-actions">
-              <button class="action-btn" @click="patientStore.takeAction(displayedCardPatient)">
-                Ambil Tindakan
-              </button>
-              <button v-if="!isIncoming" class="skip-btn" @click="handleSkipUrgent">
-                Lewati Pasien
-              </button>
-            </div>
-          </div>
-        </Transition>
-      </section>
-
-      <section class="action-section" v-else>
-        <div class="glass-panel all-clear">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="check-icon">
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-            <polyline points="22 4 12 14.01 9 11.01"></polyline>
-          </svg>
-          <h3>Semua Pasien Aman</h3>
-          <p>Belum ada pasien yang membutuhkan reposisi saat ini.</p>
+    <audio id="alarm" ref="alarm">
+        <source src="/alarm_clock.ogg" />
+    </audio>
+    <main class="dashboard-wrapper">
+        <!-- Processing Overlay -->
+        <div v-if="isProcessing" class="loading-overlay">
+            <div class="spinner"></div>
+            <p>Memproses tindakan...</p>
         </div>
-      </section>
 
-      <!-- Patient List -->
-      <section class="list-section">
-        <div class="list-header">
-          <h2 class="section-title">Daftar Pasien</h2>
-          <button @click="patientStore.simulateAlert()" class="simulate-btn" title="Simulasikan Peringatan Baru">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21.5 2v6h-6M2.13 15.57a10 10 0 1 0 3.43-11.4l-4-4"></path>
-            </svg>
-            Simulasi Peringatan
-          </button>
-        </div>
-        
-        <div class="patient-grid">
-          <div v-for="patient in paginatedPatients" :key="patient.id" class="patient-card glass-panel" :class="{'needs-action': patient.status === 'warning'}">
-            <div class="card-top">
-              <span class="bed-num">Bed {{ patient.bed }}</span>
-              <div class="card-actions">
-                <span class="status-dot" :class="patient.status"></span>
-                <button class="icon-btn delete-btn" @click.stop="handleDelete(patient)" title="Hapus Data Pasien">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="3 6 5 6 21 6"></polyline>
-                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                    <line x1="10" y1="11" x2="10" y2="17"></line>
-                    <line x1="14" y1="11" x2="14" y2="17"></line>
-                  </svg>
+        <Head>
+            <Title>Dashboard | Monitoring Reposisi Pasien</Title>
+        </Head>
+
+        <header class="dashboard-header glass-panel">
+            <div>
+                <h1 class="dashboard-title">Dashboard Monitoring Pasien</h1>
+                <p class="dashboard-subtitle">Teratai 2 Selatan</p>
+            </div>
+            <div class="header-actions">
+                <button
+                    class="audio-toggle-btn"
+                    @click="forceUnlockAudio"
+                    :class="{ unlocked: audioUnlocked }"
+                    title="Status Suara Peringatan"
+                >
+                    <svg
+                        v-if="audioUnlocked"
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    >
+                        <polygon
+                            points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"
+                        ></polygon>
+                        <path
+                            d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"
+                        ></path>
+                    </svg>
+                    <svg
+                        v-else
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    >
+                        <polygon
+                            points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"
+                        ></polygon>
+                        <line x1="23" y1="9" x2="17" y2="15"></line>
+                        <line x1="17" y1="9" x2="23" y2="15"></line>
+                    </svg>
                 </button>
-              </div>
+                <NuxtLink to="/" class="primary-btn">
+                    <svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    >
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    Laporan Baru
+                </NuxtLink>
             </div>
-            <div class="card-mid">
-              <h4>{{ patient.name }}</h4>
-              <p class="position">{{ patient.position }}</p>
-            </div>
-            <div class="card-bot">
-              <span class="time-label">Terakhir reposisi:</span>
-              <span class="time-val">{{ patient.lastUpdate }}</span>
-            </div>
-          </div>
+        </header>
+
+        <div class="dashboard-content">
+            <!-- Action Card -->
+            <section v-if="displayedCardPatient" class="action-section">
+                <h2 class="section-title">
+                    <span
+                        class="status-dot"
+                        :class="{
+                            pulse: !isIncoming,
+                            'pulse-incoming': isIncoming,
+                        }"
+                    ></span>
+                    {{
+                        isIncoming
+                            ? "Reposisi Berikutnya (Incoming)"
+                            : "Perlu Tindakan Segera"
+                    }}
+                </h2>
+
+                <Transition name="fade-slide" mode="out-in">
+                    <div
+                        :key="
+                            displayedCardPatient.id +
+                            (isIncoming ? '-incoming' : '-urgent')
+                        "
+                        class="urgent-card glass-panel"
+                        :class="{ 'incoming-style': isIncoming }"
+                    >
+                        <div
+                            class="urgent-info"
+                            @click="
+                                navigateTo(`/logs/${displayedCardPatient.id}`)
+                            "
+                            style="cursor: pointer"
+                        >
+                            <div class="urgent-header">
+                                <div class="header-left">
+                                    <span class="bed-badge"
+                                        >Bed
+                                        {{ displayedCardPatient.bed }}</span
+                                    >
+                                    <span class="time-elapsed"
+                                        >{{
+                                            displayedCardPatient.timeElapsed
+                                        }}
+                                        yang lalu</span
+                                    >
+                                </div>
+                            </div>
+                            <h3 class="patient-name">
+                                {{ displayedCardPatient.name }}
+                            </h3>
+                            <p class="patient-status">
+                                Posisi saat ini:
+                                <strong>{{
+                                    displayedCardPatient.position
+                                }}</strong>
+                            </p>
+                            <p class="patient-warning" v-if="!isIncoming">
+                                Waktunya reposisi pasien untuk mencegah
+                                dekubitus.
+                            </p>
+                            <p class="patient-warning" v-else>
+                                Mendekati batas waktu reposisi selanjutnya.
+                            </p>
+                        </div>
+
+                        <div class="urgent-actions">
+                            <button
+                                class="action-btn"
+                                @click="openActionModal(displayedCardPatient)"
+                            >
+                                Ambil Tindakan
+                            </button>
+                            <button
+                                v-if="!isIncoming"
+                                class="skip-btn"
+                                @click="handleSkipUrgent"
+                            >
+                                Lewati Pasien
+                            </button>
+                        </div>
+                    </div>
+                </Transition>
+            </section>
+
+            <section class="action-section" v-else>
+                <div class="glass-panel all-clear">
+                    <svg
+                        width="48"
+                        height="48"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        class="check-icon"
+                    >
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                    </svg>
+                    <h3>Semua Pasien Aman</h3>
+                    <p>Belum ada pasien yang membutuhkan reposisi saat ini.</p>
+                </div>
+            </section>
+
+            <!-- Patient List -->
+            <section class="list-section">
+                <div class="list-header">
+                    <h2 class="section-title">Daftar Pasien</h2>
+                    <button
+                        @click="patientStore.simulateAlert()"
+                        class="simulate-btn"
+                        title="Simulasikan Peringatan Baru"
+                    >
+                        <svg
+                            width="18"
+                            height="18"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                        >
+                            <path
+                                d="M21.5 2v6h-6M2.13 15.57a10 10 0 1 0 3.43-11.4l-4-4"
+                            ></path>
+                        </svg>
+                        Simulasi Peringatan
+                    </button>
+                </div>
+
+                <div class="patient-grid">
+                    <div
+                        v-for="patient in paginatedPatients"
+                        :key="patient.id"
+                        class="patient-card glass-panel"
+                        :class="{
+                            'needs-action': patient.status === 'warning',
+                        }"
+                        @click="navigateTo(`/logs/${patient.id}`)"
+                        style="cursor: pointer"
+                    >
+                        <div class="card-top">
+                            <span class="bed-num">Bed {{ patient.bed }}</span>
+                            <div class="card-actions">
+                                <span
+                                    class="status-dot"
+                                    :class="patient.status"
+                                ></span>
+                                <button
+                                    class="icon-btn delete-btn"
+                                    @click.stop="handleDelete(patient)"
+                                    title="Hapus Data Pasien"
+                                >
+                                    <svg
+                                        width="16"
+                                        height="16"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="2"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                    >
+                                        <polyline
+                                            points="3 6 5 6 21 6"
+                                        ></polyline>
+                                        <path
+                                            d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+                                        ></path>
+                                        <line
+                                            x1="10"
+                                            y1="11"
+                                            x2="10"
+                                            y2="17"
+                                        ></line>
+                                        <line
+                                            x1="14"
+                                            y1="11"
+                                            x2="14"
+                                            y2="17"
+                                        ></line>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-mid">
+                            <h4>{{ patient.name }}</h4>
+                            <p class="position">{{ patient.position }}</p>
+                        </div>
+                        <div class="card-bot">
+                            <span class="time-label">Terakhir reposisi:</span>
+                            <span class="time-val">{{
+                                patient.lastUpdate
+                            }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pagination Controls -->
+                <div class="pagination" v-if="totalPages > 1">
+                    <button
+                        class="page-btn"
+                        :disabled="currentPage === 1"
+                        @click="prevPage"
+                    >
+                        <svg
+                            width="18"
+                            height="18"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                        >
+                            <polyline points="15 18 9 12 15 6"></polyline>
+                        </svg>
+                        Sebelumnya
+                    </button>
+
+                    <div class="page-info">
+                        Halaman <span>{{ currentPage }}</span> dari
+                        {{ totalPages }}
+                    </div>
+
+                    <button
+                        class="page-btn"
+                        :disabled="currentPage === totalPages"
+                        @click="nextPage"
+                    >
+                        Selanjutnya
+                        <svg
+                            width="18"
+                            height="18"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                        >
+                            <polyline points="9 18 15 12 9 6"></polyline>
+                        </svg>
+                    </button>
+                </div>
+            </section>
         </div>
 
-        <!-- Pagination Controls -->
-        <div class="pagination" v-if="totalPages > 1">
-          <button class="page-btn" :disabled="currentPage === 1" @click="prevPage">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="15 18 9 12 15 6"></polyline>
-            </svg>
-            Sebelumnya
-          </button>
-          
-          <div class="page-info">
-            Halaman <span>{{ currentPage }}</span> dari {{ totalPages }}
-          </div>
-          
-          <button class="page-btn" :disabled="currentPage === totalPages" @click="nextPage">
-            Selanjutnya
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="9 18 15 12 9 6"></polyline>
-            </svg>
-          </button>
-        </div>
-      </section>
-    </div>
+        <!-- Alert Popup (Toast) -->
+        <Transition name="toast">
+            <div
+                v-if="showPopup && popupPatient"
+                class="alert-popup glass-panel"
+            >
+                <div class="popup-icon">
+                    <svg
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    >
+                        <path
+                            d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"
+                        ></path>
+                        <line x1="12" y1="9" x2="12" y2="13"></line>
+                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                </div>
+                <div class="popup-content">
+                    <h4>Perlu Tindakan Segera</h4>
+                    <p>
+                        {{ popupPatient.name }} (Bed {{ popupPatient.bed }})
+                        sudah lebih dari batas waktu.
+                    </p>
+                </div>
+                <button class="close-popup" @click="closePopup">
+                    <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    >
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+        </Transition>
 
-    <!-- Alert Popup (Toast) -->
-    <Transition name="toast">
-      <div v-if="showPopup && popupPatient" class="alert-popup glass-panel">
-        <div class="popup-icon">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-            <line x1="12" y1="9" x2="12" y2="13"></line>
-            <line x1="12" y1="17" x2="12.01" y2="17"></line>
-          </svg>
-        </div>
-        <div class="popup-content">
-          <h4>Perlu Tindakan Segera</h4>
-          <p>{{ popupPatient.name }} (Bed {{ popupPatient.bed }}) sudah lebih dari batas waktu.</p>
-        </div>
-        <button class="close-popup" @click="closePopup">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        </button>
-      </div>
-    </Transition>
+        <!-- Delete Confirmation Dialog -->
+        <Transition name="fade-scale">
+            <div
+                v-if="showDeleteDialog"
+                class="dialog-overlay"
+                @click.self="showDeleteDialog = false"
+            >
+                <div class="dialog-content glass-panel">
+                    <div class="dialog-icon">
+                        <svg
+                            width="32"
+                            height="32"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                        >
+                            <path
+                                d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"
+                            ></path>
+                            <line x1="12" y1="9" x2="12" y2="13"></line>
+                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                        </svg>
+                    </div>
+                    <h3>Konfirmasi Hapus</h3>
+                    <p>
+                        Apakah Anda yakin ingin menghapus data pasien
+                        <strong class="text-light">{{
+                            patientToDelete?.name
+                        }}</strong>
+                        di
+                        <strong class="text-light"
+                            >Bed {{ patientToDelete?.bed }}</strong
+                        >? Tindakan ini tidak dapat dibatalkan.
+                    </p>
+                    <div class="dialog-actions">
+                        <button
+                            class="dialog-btn-cancel"
+                            @click="showDeleteDialog = false"
+                        >
+                            Batal
+                        </button>
+                        <button
+                            class="dialog-btn-confirm"
+                            @click="confirmDelete"
+                        >
+                            Ya, Hapus
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </Transition>
 
-    <!-- Delete Confirmation Dialog -->
-    <Transition name="fade-scale">
-      <div v-if="showDeleteDialog" class="dialog-overlay" @click.self="showDeleteDialog = false">
-        <div class="dialog-content glass-panel">
-          <div class="dialog-icon">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-              <line x1="12" y1="9" x2="12" y2="13"></line>
-              <line x1="12" y1="17" x2="12.01" y2="17"></line>
-            </svg>
-          </div>
-          <h3>Konfirmasi Hapus</h3>
-          <p>Apakah Anda yakin ingin menghapus data pasien <strong class="text-light">{{ patientToDelete?.name }}</strong> di <strong class="text-light">Bed {{ patientToDelete?.bed }}</strong>? Tindakan ini tidak dapat dibatalkan.</p>
-          <div class="dialog-actions">
-            <button class="dialog-btn-cancel" @click="showDeleteDialog = false">Batal</button>
-            <button class="dialog-btn-confirm" @click="confirmDelete">Ya, Hapus</button>
-          </div>
-        </div>
-      </div>
-    </Transition>
-  </main>
+        <!-- Repositioning Action Modal -->
+        <Transition name="fade-scale">
+            <div
+                v-if="isActionModalOpen"
+                class="dialog-overlay"
+                @click.self="closeActionModal"
+            >
+                <div class="action-modal-content glass-panel">
+                    <h3>Reposisi Pasien</h3>
+                    <p class="modal-patient">
+                        {{ selectedPatient?.name }} - Bed
+                        {{ selectedPatient?.bed }}
+                    </p>
+
+                    <div class="modal-form">
+                        <div class="input-group checkbox-group">
+                            <label class="group-label"
+                                >Pilih Posisi Baru
+                                <span class="required">*</span></label
+                            >
+                            <div class="checkbox-grid">
+                                <label class="custom-checkbox">
+                                    <input
+                                        type="radio"
+                                        value="Miring Kanan"
+                                        v-model="actionForm.positions"
+                                    />
+                                    <span class="checkmark"></span>
+                                    <span class="text">Miring Kanan</span>
+                                </label>
+                                <label class="custom-checkbox">
+                                    <input
+                                        type="radio"
+                                        value="Miring Kiri"
+                                        v-model="actionForm.positions"
+                                    />
+                                    <span class="checkmark"></span>
+                                    <span class="text">Miring Kiri</span>
+                                </label>
+                                <label class="custom-checkbox">
+                                    <input
+                                        type="radio"
+                                        value="Telentang"
+                                        v-model="actionForm.positions"
+                                    />
+                                    <span class="checkmark"></span>
+                                    <span class="text">Telentang</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="input-group">
+                            <label for="nurseNameAction" class="floating-label"
+                                >Nama Perawat
+                                <span class="required">*</span></label
+                            >
+                            <input
+                                type="text"
+                                id="nurseNameAction"
+                                v-model="actionForm.nurseName"
+                                required
+                            />
+
+                            <div class="focus-border"></div>
+                        </div>
+
+                        <div class="input-group">
+                            <label class="group-label"
+                                >Foto Bukti Tindakan
+                                <span class="required">*</span></label
+                            >
+                            <div class="image-upload-wrapper">
+                                <input
+                                    type="file"
+                                    id="actionImage"
+                                    accept="image/*"
+                                    @change="handleImageChange"
+                                    hidden
+                                    ref="imageInput"
+                                />
+                                <div
+                                    class="upload-area"
+                                    :class="{ 'has-image': imagePreview }"
+                                    @click="imageInput.click()"
+                                >
+                                    <div
+                                        v-if="!imagePreview"
+                                        class="upload-placeholder"
+                                    >
+                                        <svg
+                                            width="24"
+                                            height="24"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            stroke-width="2"
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                        >
+                                            <rect
+                                                x="3"
+                                                y="3"
+                                                width="18"
+                                                height="18"
+                                                rx="2"
+                                                ry="2"
+                                            ></rect>
+                                            <circle
+                                                cx="8.5"
+                                                cy="8.5"
+                                                r="1.5"
+                                            ></circle>
+                                            <polyline
+                                                points="21 15 16 10 5 21"
+                                            ></polyline>
+                                        </svg>
+                                        <span>Ambil Foto / Pilih Gambar</span>
+                                    </div>
+                                    <img
+                                        v-else
+                                        :src="imagePreview"
+                                        class="preview-img"
+                                    />
+                                </div>
+                                <button
+                                    v-if="imagePreview"
+                                    type="button"
+                                    class="remove-img-btn"
+                                    @click.stop="clearImage"
+                                >
+                                    Hapus & Ganti Foto
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="dialog-actions">
+                        <button
+                            class="dialog-btn-cancel"
+                            @click="closeActionModal"
+                        >
+                            Batal
+                        </button>
+                        <button
+                            class="dialog-btn-confirm"
+                            :disabled="!isActionFormValid"
+                            @click="submitReposition"
+                        >
+                            Simpan Laporan
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </Transition>
+    </main>
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import { storeToRefs } from 'pinia'
-import { usePatientStore } from '#imports'
+import { ref, computed, watch, onMounted, onUnmounted } from "vue";
+import { storeToRefs } from "pinia";
+import { usePatientStore } from "#imports";
 
-const patientStore = usePatientStore()
+const patientStore = usePatientStore();
 
-const { 
-  isProcessing,
-  displayedCardPatient,
-  isIncoming,
-  urgentPatient,
-  patients 
-} = storeToRefs(patientStore)
+const {
+    isProcessing,
+    displayedCardPatient,
+    isIncoming,
+    urgentPatient,
+    patients,
+} = storeToRefs(patientStore);
 
 // Pagination logic
-const currentPage = ref(1)
-const itemsPerPage = 6
+const currentPage = ref(1);
+const itemsPerPage = 6;
 
-const alarm = ref(null)
-const audioUnlocked = ref(false)
+const alarm = ref(null);
+const audioUnlocked = ref(false);
 
 const triggerHiddenAudioUnlock = () => {
-  if (audioUnlocked.value || !alarm.value) return
-  alarm.value.muted = true
-  alarm.value.play().then(() => {
-    alarm.value.pause()
-    alarm.value.currentTime = 0
-    alarm.value.muted = false
-    audioUnlocked.value = true
-  }).catch(e => {
-    // Expected to fail if no direct interaction occurred yet
-  })
-}
+    if (audioUnlocked.value || !alarm.value) return;
+    alarm.value.muted = true;
+    alarm.value
+        .play()
+        .then(() => {
+            alarm.value.pause();
+            alarm.value.currentTime = 0;
+            alarm.value.muted = false;
+            audioUnlocked.value = true;
+        })
+        .catch((e) => {
+            // Expected to fail if no direct interaction occurred yet
+        });
+};
 
 const forceUnlockAudio = () => {
-  if (!alarm.value) return
-  if (!audioUnlocked.value) {
-    alarm.value.muted = false
-    alarm.value.play().then(() => {
-      alarm.value.pause()
-      alarm.value.currentTime = 0
-      audioUnlocked.value = true
-    })
-  } else {
-    // Unchecking will effectively treat as muted state conceptually
-    audioUnlocked.value = false
-  }
-}
+    if (!alarm.value) return;
+    if (!audioUnlocked.value) {
+        alarm.value.muted = false;
+        alarm.value.play().then(() => {
+            alarm.value.pause();
+            alarm.value.currentTime = 0;
+            audioUnlocked.value = true;
+        });
+    } else {
+        // Unchecking will effectively treat as muted state conceptually
+        audioUnlocked.value = false;
+    }
+};
 
 const totalPages = computed(() => {
-  return Math.ceil(patients.value.length / itemsPerPage)
-})
+    return Math.ceil(patients.value.length / itemsPerPage);
+});
 
 const paginatedPatients = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage
-  const end = start + itemsPerPage
-  return patients.value.slice(start, end)
-})
+    const start = (currentPage.value - 1) * itemsPerPage;
+    const end = start + itemsPerPage;
+    return patients.value.slice(start, end);
+});
 
 watch(totalPages, (newTotal) => {
-  if (currentPage.value > newTotal && newTotal > 0) {
-    currentPage.value = newTotal
-  }
-})
+    if (currentPage.value > newTotal && newTotal > 0) {
+        currentPage.value = newTotal;
+    }
+});
 
 const prevPage = () => {
-  if (currentPage.value > 1) currentPage.value--
-}
+    if (currentPage.value > 1) currentPage.value--;
+};
 
 const nextPage = () => {
-  if (currentPage.value < totalPages.value) currentPage.value++
-}
+    if (currentPage.value < totalPages.value) currentPage.value++;
+};
 
 const handleSkipUrgent = () => {
-  const patient = urgentPatient.value
-  if (patient) {
-    patientStore.skipUrgent()
-    if (popupPatient.value && popupPatient.value.id === patient.id) {
-      closePopup()
+    const patient = urgentPatient.value;
+    if (patient) {
+        patientStore.skipUrgent();
+        if (popupPatient.value && popupPatient.value.id === patient.id) {
+            closePopup();
+        }
     }
-  }
-}
+};
 
-const showDeleteDialog = ref(false)
-const patientToDelete = ref(null)
+const showDeleteDialog = ref(false);
+const patientToDelete = ref(null);
+
+const isActionModalOpen = ref(false);
+const selectedPatient = ref(null);
+const actionForm = ref({
+    positions: "",
+    nurseName: "",
+});
+const imageFile = ref(null);
+const imagePreview = ref(null);
+const imageInput = ref(null);
+
+const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+        imageFile.value = file;
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            imagePreview.value = event.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+};
+
+const clearImage = () => {
+    imageFile.value = null;
+    imagePreview.value = null;
+    if (imageInput.value) imageInput.value.value = "";
+};
+
+const isActionFormValid = computed(() => {
+    return (
+        actionForm.value.positions !== "" &&
+        actionForm.value.nurseName.trim() !== "" &&
+        imageFile.value !== null
+    );
+});
+
+const openActionModal = (patient) => {
+    selectedPatient.value = patient;
+    isActionModalOpen.value = true;
+    actionForm.value = {
+        positions: "",
+        nurseName: "",
+    };
+    clearImage();
+};
+
+const closeActionModal = () => {
+    isActionModalOpen.value = false;
+    selectedPatient.value = null;
+    clearImage();
+};
+
+const submitReposition = async () => {
+    if (!isActionFormValid.value) return;
+
+    const error = await patientStore.takeAction(
+        selectedPatient.value,
+        [actionForm.value.positions],
+        actionForm.value.nurseName,
+        imageFile.value,
+    );
+
+    if (error) {
+        alert(error);
+    } else {
+        closeActionModal();
+        if (
+            popupPatient.value &&
+            popupPatient.value.id === selectedPatient.value.id
+        ) {
+            closePopup();
+        }
+    }
+};
 
 const handleDelete = (patient) => {
-  patientToDelete.value = patient
-  showDeleteDialog.value = true
-}
+    patientToDelete.value = patient;
+    showDeleteDialog.value = true;
+};
 
 const confirmDelete = async () => {
-  const patient = patientToDelete.value
-  if (patient) {
-    showDeleteDialog.value = false
-    await patientStore.deletePatient(patient.bed, patient.name)
-    if (popupPatient.value && popupPatient.value.id === patient.id) {
-      closePopup()
+    const patient = patientToDelete.value;
+    if (patient) {
+        showDeleteDialog.value = false;
+        await patientStore.deletePatient(patient.bed, patient.name);
+        if (popupPatient.value && popupPatient.value.id === patient.id) {
+            closePopup();
+        }
+        patientToDelete.value = null;
     }
-    patientToDelete.value = null
-  }
-}
+};
 
-const showPopup = ref(false)
-const popupPatient = ref(null)
-let popupTimeout = null
+const showPopup = ref(false);
+const popupPatient = ref(null);
+let popupTimeout = null;
 
 const playAlertSound = () => {
-  try {
-    if (alarm.value) {
-      if (audioUnlocked.value) {
-        alarm.value.currentTime = 0
-        alarm.value.play().catch(e => console.warn('Peringatan audio diblokir. Harap klik tombol un-mute.', e))
-      } else {
-        console.warn('Sistem audio belum mendapat izin interaksi pengguna.')
-      }
+    try {
+        if (alarm.value) {
+            if (audioUnlocked.value) {
+                alarm.value.currentTime = 0;
+                alarm.value
+                    .play()
+                    .catch((e) =>
+                        console.warn(
+                            "Peringatan audio diblokir. Harap klik tombol un-mute.",
+                            e,
+                        ),
+                    );
+            } else {
+                console.warn(
+                    "Sistem audio belum mendapat izin interaksi pengguna.",
+                );
+            }
+        }
+    } catch (e) {
+        console.warn("Audio tidak didukung", e);
     }
-  } catch(e) {
-    console.warn("Audio tidak didukung", e)
-  }
-}
+};
 
 const triggerAlert = (patient) => {
-  popupPatient.value = patient
-  showPopup.value = true
-  playAlertSound()
-  
-  if (popupTimeout) clearTimeout(popupTimeout)
-  popupTimeout = setTimeout(() => {
-    closePopup()
-  }, 6000)
-}
+    popupPatient.value = patient;
+    showPopup.value = true;
+    playAlertSound();
+
+    if (popupTimeout) clearTimeout(popupTimeout);
+    popupTimeout = setTimeout(() => {
+        closePopup();
+    }, 6000);
+};
 
 const closePopup = () => {
-  showPopup.value = false
-}
+    showPopup.value = false;
+};
 
 watch(urgentPatient, (newVal, oldVal) => {
-  if (newVal && (!oldVal || newVal.id !== oldVal.id)) {
-    triggerAlert(newVal)
-  }
-})
+    if (newVal && (!oldVal || newVal.id !== oldVal.id)) {
+        triggerAlert(newVal);
+    }
+});
 
 onMounted(() => {
-  // Bind silent unlock listener to any document click
-  window.addEventListener('click', triggerHiddenAudioUnlock, { once: true })
-  window.addEventListener('keydown', triggerHiddenAudioUnlock, { once: true })
-  
-  if (urgentPatient.value) {
-    setTimeout(() => {
-      triggerAlert(urgentPatient.value)
-    }, 500)
-  }
+    // Bind silent unlock listener to any document click
+    window.addEventListener("click", triggerHiddenAudioUnlock, { once: true });
+    window.addEventListener("keydown", triggerHiddenAudioUnlock, {
+        once: true,
+    });
 
-  patientStore.initRealtimeAndCron()
-})
+    if (urgentPatient.value) {
+        setTimeout(() => {
+            triggerAlert(urgentPatient.value);
+        }, 500);
+    }
+
+    patientStore.initRealtimeAndCron();
+});
 
 onUnmounted(() => {
-  window.removeEventListener('click', triggerHiddenAudioUnlock)
-  window.removeEventListener('keydown', triggerHiddenAudioUnlock)
-  patientStore.cleanup()
-})
+    window.removeEventListener("click", triggerHiddenAudioUnlock);
+    window.removeEventListener("keydown", triggerHiddenAudioUnlock);
+    patientStore.cleanup();
+});
 </script>
 
 <style scoped>
 .dashboard-wrapper {
-  width: 100%;
-  max-width: 1000px;
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
-  z-index: 1;
-  position: relative;
+    width: 100%;
+    max-width: 1000px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    z-index: 1;
+    position: relative;
 }
 
 .dashboard-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1.5rem 2rem;
-  animation: slideDown 0.6s ease-out;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem 2rem;
+    animation: slideDown 0.6s ease-out;
 }
 
 .header-actions {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
 }
 
 .audio-toggle-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.8rem;
-  background: rgba(239, 68, 68, 0.15);
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  border-radius: 10px;
-  color: #fca5a5;
-  cursor: pointer;
-  transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.8rem;
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 10px;
+    color: #fca5a5;
+    cursor: pointer;
+    transition: all 0.3s ease;
 }
 
 .audio-toggle-btn.unlocked {
-  background: rgba(16, 185, 129, 0.15);
-  border-color: rgba(16, 185, 129, 0.3);
-  color: #6ee7b7;
+    background: rgba(16, 185, 129, 0.15);
+    border-color: rgba(16, 185, 129, 0.3);
+    color: #6ee7b7;
 }
 
 .audio-toggle-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.1);
 }
 
 .dashboard-title {
-  font-size: 1.8rem;
-  font-weight: 700;
-  color: var(--text-light);
-  margin-bottom: 0.2rem;
-  background: linear-gradient(135deg, #e0e7ff, #a5b4fc);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--text-light);
+    margin-bottom: 0.2rem;
+    background: linear-gradient(135deg, #e0e7ff, #a5b4fc);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
 }
 
 .dashboard-subtitle {
-  color: var(--text-muted);
-  font-size: 0.95rem;
+    color: var(--text-muted);
+    font-size: 0.95rem;
 }
 
 .primary-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.8rem 1.5rem;
-  background: linear-gradient(135deg, var(--primary), var(--secondary));
-  border: none;
-  border-radius: 10px;
-  color: white;
-  font-family: inherit;
-  font-weight: 600;
-  text-decoration: none;
-  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
-  transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.8rem 1.5rem;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    border: none;
+    border-radius: 10px;
+    color: white;
+    font-family: inherit;
+    font-weight: 600;
+    text-decoration: none;
+    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+    transition: all 0.3s ease;
 }
 
 .primary-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(99, 102, 241, 0.6);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(99, 102, 241, 0.6);
 }
 
 .dashboard-content {
-  display: flex;
-  flex-direction: column;
-  gap: 2.5rem;
-  animation: fadeIn 0.8s ease-out 0.2s both;
+    display: flex;
+    flex-direction: column;
+    gap: 2.5rem;
+    animation: fadeIn 0.8s ease-out 0.2s both;
 }
 
 .section-title {
-  font-size: 1.4rem;
-  font-weight: 600;
-  margin-bottom: 1rem;
-  display: flex;
-  align-items: center;
-  gap: 0.8rem;
+    font-size: 1.4rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
 }
 
 .urgent-card {
-  padding: 2rem;
-  border-left: 4px solid var(--error);
-  display: flex;
-  justify-content: space-between;
-  align-items: stretch;
-  gap: 2rem;
-  background: linear-gradient(to right, rgba(239, 68, 68, 0.05), rgba(30, 41, 59, 0.6));
+    padding: 2rem;
+    border-left: 4px solid var(--error);
+    display: flex;
+    justify-content: space-between;
+    align-items: stretch;
+    gap: 2rem;
+    background: linear-gradient(
+        to right,
+        rgba(239, 68, 68, 0.05),
+        rgba(30, 41, 59, 0.6)
+    );
 }
 
 .incoming-style {
-  border-left: 5px solid var(--warning);
-  background: linear-gradient(to right, rgba(245, 158, 11, 0.05), rgba(30, 41, 59, 0.6));
+    border-left: 5px solid var(--warning);
+    background: linear-gradient(
+        to right,
+        rgba(245, 158, 11, 0.05),
+        rgba(30, 41, 59, 0.6)
+    );
 }
 
 .urgent-info {
-  flex: 1;
+    flex: 1;
 }
 
 .urgent-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
 }
 
 .header-left {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
 }
 
 .bed-badge {
-  background: rgba(239, 68, 68, 0.15);
-  color: #fca5a5;
-  padding: 0.3rem 0.8rem;
-  border-radius: 20px;
-  font-weight: 600;
-  font-size: 0.9rem;
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  white-space: nowrap;
-  flex-shrink: 0;
+    background: rgba(239, 68, 68, 0.15);
+    color: #fca5a5;
+    padding: 0.3rem 0.8rem;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .time-elapsed {
-  color: #fca5a5;
-  font-size: 0.9rem;
+    color: #fca5a5;
+    font-size: 0.9rem;
 }
 
 .patient-name {
-  font-size: 2.2rem;
-  font-weight: 700;
-  margin-bottom: 0.5rem;
+    font-size: 2.2rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
 }
 
 .patient-status {
-  color: var(--text-light);
-  font-size: 1.1rem;
-  margin-bottom: 0.5rem;
+    color: var(--text-light);
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
 }
 
 .patient-warning {
-  color: var(--error);
-  font-size: 0.9rem;
-  margin: 0;
+    color: var(--error);
+    font-size: 0.9rem;
+    margin: 0;
 }
 
 .incoming-style .patient-warning {
-  color: var(--warning);
+    color: var(--warning);
 }
 
 .urgent-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  min-width: 200px;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    min-width: 200px;
 }
 
 .action-btn {
-  display: block;
-  text-align: center;
-  padding: 1.2rem;
-  background: var(--error);
-  color: white;
-  text-decoration: none;
-  border-radius: 12px;
-  font-weight: 600;
-  font-size: 1.1rem;
-  box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
-  transition: all 0.3s ease;
+    display: block;
+    text-align: center;
+    padding: 1.2rem;
+    background: var(--error);
+    color: white;
+    text-decoration: none;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 1.1rem;
+    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+    transition: all 0.3s ease;
 }
 
 .action-btn:hover {
-  background: #f87171;
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(239, 68, 68, 0.5);
+    background: #f87171;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(239, 68, 68, 0.5);
 }
 
 .skip-btn {
-  padding: 0.8rem;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: var(--text-muted);
-  border-radius: 10px;
-  font-family: inherit;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
+    padding: 0.8rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-muted);
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
 }
 
 .skip-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--text-light);
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-light);
 }
 
 .all-clear {
-  text-align: center;
-  padding: 4rem 2rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  border-color: rgba(16, 185, 129, 0.2);
+    text-align: center;
+    padding: 4rem 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    border-color: rgba(16, 185, 129, 0.2);
 }
 
 .check-icon {
-  color: var(--success);
-  margin-bottom: 1.5rem;
-  filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.4));
+    color: var(--success);
+    margin-bottom: 1.5rem;
+    filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.4));
 }
 
 .all-clear h3 {
-  font-size: 1.8rem;
-  color: var(--success);
-  margin-bottom: 0.5rem;
+    font-size: 1.8rem;
+    color: var(--success);
+    margin-bottom: 0.5rem;
 }
 
 .all-clear p {
-  color: var(--text-muted);
+    color: var(--text-muted);
 }
 
 .patient-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 1.5rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.5rem;
 }
 
 /* Pagination */
 .pagination {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 2rem;
-  padding: 1rem 1.5rem;
-  background: rgba(30, 41, 59, 0.4);
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 2rem;
+    padding: 1rem 1.5rem;
+    background: rgba(30, 41, 59, 0.4);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .page-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: var(--text-light);
-  padding: 0.6rem 1rem;
-  border-radius: 8px;
-  cursor: pointer;
-  font-family: inherit;
-  font-weight: 500;
-  font-size: 0.9rem;
-  transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-light);
+    padding: 0.6rem 1rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: 500;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
 }
 
 .page-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.15);
-  border-color: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.2);
 }
 
 .page-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
+    opacity: 0.4;
+    cursor: not-allowed;
 }
 
 .page-info {
-  color: var(--text-muted);
-  font-size: 0.95rem;
+    color: var(--text-muted);
+    font-size: 0.95rem;
 }
 
 .page-info span {
-  color: var(--text-light);
-  font-weight: 600;
+    color: var(--text-light);
+    font-weight: 600;
 }
 
 .patient-card {
-  padding: 1.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  transition: all 0.3s ease;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    transition: all 0.3s ease;
 }
 
 .patient-card:hover {
-  transform: translateY(-5px);
-  border-color: rgba(255, 255, 255, 0.2);
-  background: rgba(30, 41, 59, 0.8);
+    transform: translateY(-5px);
+    border-color: rgba(255, 255, 255, 0.2);
+    background: rgba(30, 41, 59, 0.8);
 }
 
 .patient-card.needs-action {
-  border-color: rgba(245, 158, 11, 0.3);
+    border-color: rgba(245, 158, 11, 0.3);
 }
 
 .card-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .bed-num {
-  font-weight: 600;
-  color: var(--text-muted);
-  font-size: 0.9rem;
-  background: rgba(255,255,255,0.05);
-  padding: 0.2rem 0.6rem;
-  border-radius: 6px;
+    font-weight: 600;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 0.2rem 0.6rem;
+    border-radius: 6px;
 }
 
 .status-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
 }
 
 .status-dot.ok {
-  background-color: var(--success);
-  box-shadow: 0 0 8px var(--success);
+    background-color: var(--success);
+    box-shadow: 0 0 8px var(--success);
 }
 
 .status-dot.warning {
-  background-color: var(--warning);
-  box-shadow: 0 0 8px var(--warning);
+    background-color: var(--warning);
+    box-shadow: 0 0 8px var(--warning);
 }
 
 .card-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
 }
 
 .icon-btn.delete-btn {
-  background: transparent;
-  border: none;
-  color: rgba(255, 255, 255, 0.25);
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.25);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
 }
 
 .icon-btn.delete-btn:hover {
-  background: rgba(239, 68, 68, 0.15);
-  color: #ef4444;
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
 }
 
 .card-mid h4 {
-  font-size: 1.4rem;
-  margin-bottom: 0.2rem;
+    font-size: 1.4rem;
+    margin-bottom: 0.2rem;
 }
 
 .position {
-  color: var(--text-muted);
-  font-size: 0.95rem;
+    color: var(--text-muted);
+    font-size: 0.95rem;
 }
 
 .card-bot {
-  background: rgba(0, 0, 0, 0.2);
-  padding: 0.8rem;
-  border-radius: 8px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 0.85rem;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 0.8rem;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.85rem;
 }
 
 .time-label {
-  color: var(--text-muted);
+    color: var(--text-muted);
 }
 
 .time-val {
-  font-weight: 600;
-  color: var(--text-light);
+    font-weight: 600;
+    color: var(--text-light);
 }
 
 .list-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
 }
 
 .simulate-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.6rem 1rem;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: var(--text-muted);
-  border-radius: 8px;
-  font-family: inherit;
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-muted);
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
 }
 
 .simulate-btn:hover {
-  background: rgba(255, 255, 255, 0.15);
-  color: var(--text-light);
-  border-color: rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.15);
+    color: var(--text-light);
+    border-color: rgba(255, 255, 255, 0.3);
 }
 
 .alert-popup {
-  position: fixed;
-  bottom: 2rem;
-  right: 2rem;
-  max-width: 400px;
-  display: flex;
-  align-items: flex-start;
-  gap: 1rem;
-  padding: 1.2rem;
-  border-left: 4px solid var(--error);
-  z-index: 50;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    max-width: 400px;
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1.2rem;
+    border-left: 4px solid var(--error);
+    z-index: 50;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
 }
 
 .popup-icon {
-  color: var(--error);
-  background: rgba(239, 68, 68, 0.1);
-  padding: 0.5rem;
-  border-radius: 50%;
-  flex-shrink: 0;
+    color: var(--error);
+    background: rgba(239, 68, 68, 0.1);
+    padding: 0.5rem;
+    border-radius: 50%;
+    flex-shrink: 0;
 }
 
 .popup-content h4 {
-  color: var(--text-light);
-  margin-bottom: 0.2rem;
-  font-size: 1.1rem;
+    color: var(--text-light);
+    margin-bottom: 0.2rem;
+    font-size: 1.1rem;
 }
 
 .popup-content p {
-  color: var(--text-muted);
-  font-size: 0.9rem;
-  line-height: 1.4;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    line-height: 1.4;
 }
 
 .close-popup {
-  background: transparent;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  padding: 0.2rem;
-  transition: color 0.2s ease;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0.2rem;
+    transition: color 0.2s ease;
 }
 
 .close-popup:hover {
-  color: var(--text-light);
+    color: var(--text-light);
 }
 
 .toast-enter-active,
 .toast-leave-active {
-  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .toast-enter-from {
-  opacity: 0;
-  transform: translateX(50px) scale(0.9);
+    opacity: 0;
+    transform: translateX(50px) scale(0.9);
 }
 
 .toast-leave-to {
-  opacity: 0;
-  transform: translateY(20px);
+    opacity: 0;
+    transform: translateY(20px);
 }
 
 @keyframes pulseRed {
-  0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
-  70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+    0% {
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+    }
+    70% {
+        box-shadow: 0 0 0 6px rgba(239, 68, 68, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+    }
 }
 
 @keyframes pulseYellow {
-  0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); }
-  70% { box-shadow: 0 0 0 6px rgba(245, 158, 11, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+    0% {
+        box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4);
+    }
+    70% {
+        box-shadow: 0 0 0 6px rgba(245, 158, 11, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+    }
 }
 
 .pulse {
-  animation: pulseRed 2s infinite;
+    animation: pulseRed 2s infinite;
 }
 
 .pulse-incoming {
-  animation: pulseYellow 2s infinite;
-  background-color: var(--warning);
+    animation: pulseYellow 2s infinite;
+    background-color: var(--warning);
 }
 
 /* Card Transitions */
 .fade-slide-enter-active,
 .fade-slide-leave-active {
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .fade-slide-enter-from {
-  opacity: 0;
-  transform: translateX(30px);
+    opacity: 0;
+    transform: translateX(30px);
 }
 
 .fade-slide-leave-to {
-  opacity: 0;
-  transform: translateX(-30px);
+    opacity: 0;
+    transform: translateX(-30px);
 }
 
 @keyframes slideDown {
-  from { opacity: 0; transform: translateY(-30px); }
-  to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes popIn {
+    0% {
+        transform: scale(0.8);
+    }
+    50% {
+        transform: scale(1.15);
+    }
+    100% {
+        transform: scale(1);
+    }
 }
 
 /* Loading Overlay */
 .loading-overlay {
-  position: fixed;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  background: rgba(15, 23, 42, 0.75);
-  backdrop-filter: blur(8px);
-  z-index: 9999;
-  color: var(--text-light);
-  animation: fadeIn 0.3s ease;
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background: rgba(15, 23, 42, 0.75);
+    backdrop-filter: blur(8px);
+    z-index: 9999;
+    color: var(--text-light);
+    animation: fadeIn 0.3s ease;
 }
 
 .spinner {
-  width: 48px;
-  height: 48px;
-  border: 4px solid rgba(255, 255, 255, 0.1);
-  border-left-color: var(--primary);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin-bottom: 1rem;
+    width: 48px;
+    height: 48px;
+    border: 4px solid rgba(255, 255, 255, 0.1);
+    border-left-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 1rem;
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 /* Dialog Styles */
 .dialog-overlay {
-  position: fixed;
-  inset: 0;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background: rgba(15, 23, 42, 0.7);
-  backdrop-filter: blur(5px);
-  z-index: 100;
+    position: fixed;
+    inset: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: rgba(15, 23, 42, 0.7);
+    backdrop-filter: blur(5px);
+    z-index: 100;
 }
 
 .dialog-content {
-  width: 90%;
-  max-width: 420px;
-  padding: 2.5rem 2rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: 1rem;
-  border-top: 4px solid var(--error);
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+    width: 90%;
+    max-width: 420px;
+    padding: 2.5rem 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 1rem;
+    border-top: 4px solid var(--error);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
 }
 
 .dialog-icon {
-  color: var(--error);
-  background: rgba(239, 68, 68, 0.1);
-  padding: 1.2rem;
-  border-radius: 50%;
-  margin-bottom: 0.5rem;
+    color: var(--error);
+    background: rgba(239, 68, 68, 0.1);
+    padding: 1.2rem;
+    border-radius: 50%;
+    margin-bottom: 0.5rem;
 }
 
 .dialog-content h3 {
-  font-size: 1.5rem;
-  color: var(--text-light);
-  font-weight: 700;
+    font-size: 1.5rem;
+    color: var(--text-light);
+    font-weight: 700;
 }
 
 .dialog-content p {
-  color: var(--text-muted);
-  line-height: 1.5;
-  margin-bottom: 1.5rem;
-  font-size: 1.05rem;
+    color: var(--text-muted);
+    line-height: 1.5;
+    margin-bottom: 1.5rem;
+    font-size: 1.05rem;
 }
 
 .text-light {
-  color: var(--text-light);
+    color: var(--text-light);
 }
 
 .dialog-actions {
-  display: flex;
-  gap: 1rem;
-  width: 100%;
+    display: flex;
+    gap: 1rem;
+    width: 100%;
 }
 
 .dialog-btn-cancel,
 .dialog-btn-confirm {
-  flex: 1;
-  padding: 0.9rem;
-  border-radius: 10px;
-  font-family: inherit;
-  font-weight: 600;
-  font-size: 1.05rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
+    flex: 1;
+    padding: 0.9rem;
+    border-radius: 10px;
+    font-family: inherit;
+    font-weight: 600;
+    font-size: 1.05rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
 }
 
 .dialog-btn-cancel {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: var(--text-light);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-light);
 }
 
 .dialog-btn-cancel:hover {
-  background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.1);
 }
 
 .dialog-btn-confirm {
-  background: var(--error);
-  border: none;
-  color: white;
-  box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+    background: var(--error);
+    border: none;
+    color: white;
+    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
 }
 
 .dialog-btn-confirm:hover {
-  background: #f87171;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
+    background: #f87171;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
 }
 
 /* Dialog Transition */
 .fade-scale-enter-active,
 .fade-scale-leave-active {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .fade-scale-enter-from,
 .fade-scale-leave-to {
-  opacity: 0;
+    opacity: 0;
 }
 
 .fade-scale-enter-from .dialog-content,
 .fade-scale-leave-to .dialog-content {
-  transform: scale(0.95) translateY(10px);
+    transform: scale(0.95) translateY(10px);
+}
+
+/* Action Modal Styles */
+.action-modal-content {
+    width: 90%;
+    max-width: 500px;
+    padding: 2.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    border-top: 4px solid var(--primary);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.action-modal-content h3 {
+    font-size: 1.8rem;
+    font-weight: 700;
+    text-align: center;
+}
+
+.modal-patient {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 1.1rem;
+    margin-top: -1rem;
+}
+
+.modal-form {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    margin: 1rem 0;
+}
+
+.checkbox-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.8rem;
+    margin-top: 0.5rem;
+}
+
+.custom-checkbox {
+    position: relative;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    padding: 1rem;
+    background: rgba(15, 23, 42, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.custom-checkbox:hover {
+    background: rgba(15, 23, 42, 0.8);
+    border-color: rgba(255, 255, 255, 0.25);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.custom-checkbox input {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    height: 0;
+    width: 0;
+}
+
+.checkmark {
+    position: relative;
+    height: 24px;
+    width: 24px;
+    background-color: rgba(0, 0, 0, 0.2);
+    border: 2px solid var(--text-muted);
+    border-radius: 50%; /* Circle for radio buttons */
+    margin-right: 12px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.custom-checkbox input:checked ~ .checkmark {
+    background-color: var(--primary);
+    border-color: var(--primary);
+    animation: popIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+}
+
+.checkmark:after {
+    content: "";
+    position: absolute;
+    display: none;
+    width: 8px;
+    height: 8px;
+    background: white;
+    border-radius: 50%;
+}
+
+.custom-checkbox input:checked ~ .checkmark:after {
+    display: block;
+}
+
+.custom-checkbox input:checked ~ .text {
+    color: white;
+    font-weight: 500;
+}
+
+.action-modal-content .input-group input[type="text"] {
+    width: 100%;
+    padding: 1.8rem 1.2rem 0.6rem;
+    background: rgba(15, 23, 42, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    color: var(--text-light);
+    font-family: inherit;
+    font-size: 1.05rem;
+    transition: all 0.3s ease;
+    outline: none;
+}
+
+.action-modal-content .input-group .floating-label {
+    left: 1.2rem;
+    top: 50%;
+    color: var(--text-muted);
+    font-size: 1.05rem;
+    pointer-events: none;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.action-modal-content .input-group input:focus ~ .floating-label,
+.action-modal-content .input-group input:valid ~ .floating-label {
+    top: 1rem;
+    font-size: 0.8rem;
+    color: #c7d2fe;
+}
+
+.dialog-btn-confirm:disabled {
+    background: #475569;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+    opacity: 0.5;
+}
+
+/* Image Upload Styles */
+.image-upload-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    margin-top: 0.5rem;
+}
+
+.upload-area {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    background: rgba(15, 23, 42, 0.5);
+    border: 2px dashed rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.upload-area:hover {
+    border-color: var(--primary);
+    background: rgba(15, 23, 42, 0.8);
+}
+
+.upload-area.has-image {
+    border-style: solid;
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.upload-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.8rem;
+    color: var(--text-muted);
+}
+
+.upload-placeholder svg {
+    width: 32px;
+    height: 32px;
+    opacity: 0.6;
+}
+
+.upload-placeholder span {
+    font-size: 0.95rem;
+}
+
+.preview-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.remove-img-btn {
+    padding: 0.6rem;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    border-radius: 8px;
+    color: #fca5a5;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.remove-img-btn:hover {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
 }
 
 @media (max-width: 768px) {
-  .dashboard-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 1.2rem;
-    padding: 1.2rem;
-  }
+    .dashboard-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1.2rem;
+        padding: 1.2rem;
+    }
 
-  .header-actions {
-    width: 100%;
-    justify-content: space-between;
-  }
+    .header-actions {
+        width: 100%;
+        justify-content: space-between;
+    }
 
-  .primary-btn {
-    flex: 1;
-    justify-content: center;
-  }
+    .primary-btn {
+        flex: 1;
+        justify-content: center;
+    }
 
-  .dashboard-title {
-    font-size: 1.4rem;
-    line-height: 1.3;
-    margin-bottom: 0.3rem;
-  }
+    .dashboard-title {
+        font-size: 1.4rem;
+        line-height: 1.3;
+        margin-bottom: 0.3rem;
+    }
 
-  .urgent-card {
-    flex-direction: column;
-  }
-  
-  .urgent-actions {
-    width: 100%;
-  }
+    .urgent-card {
+        flex-direction: column;
+    }
 
-  .urgent-header {
-    flex-wrap: wrap;
-  }
-  
-  .header-left {
-    flex-wrap: wrap;
-    gap: 0.5rem;
-  }
+    .urgent-actions {
+        width: 100%;
+    }
 
-  .pagination {
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 1rem;
-    padding: 1rem;
-  }
-  
-  .page-info {
-    width: 100%;
-    text-align: center;
-    order: -1;
-  }
-  
-  .page-btn {
-    flex: 1;
-    justify-content: center;
-    font-size: 0.85rem;
-    padding: 0.6rem 0.5rem;
-  }
+    .urgent-header {
+        flex-wrap: wrap;
+    }
 
-  .list-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 1rem;
-  }
-  
-  .simulate-btn {
-    width: 100%;
-    justify-content: center;
-  }
+    .header-left {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .pagination {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 1rem;
+        padding: 1rem;
+    }
+
+    .page-info {
+        width: 100%;
+        text-align: center;
+        order: -1;
+    }
+
+    .page-btn {
+        flex: 1;
+        justify-content: center;
+        font-size: 0.85rem;
+        padding: 0.6rem 0.5rem;
+    }
+
+    .list-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .simulate-btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    /* Action Modal Mobile Styles */
+    .action-modal-content {
+        padding: 1.5rem;
+        gap: 1rem;
+        width: 95%;
+    }
+
+    .action-modal-content h3 {
+        font-size: 1.4rem;
+    }
+
+    .modal-patient {
+        font-size: 0.95rem;
+        margin-top: -0.5rem;
+    }
+
+    .modal-form {
+        gap: 1.5rem;
+    }
+
+    .dialog-actions {
+        flex-direction: column;
+        gap: 0.8rem;
+    }
+
+    .dialog-btn-cancel,
+    .dialog-btn-confirm {
+        width: 100%;
+        padding: 0.8rem;
+    }
 }
 </style>
