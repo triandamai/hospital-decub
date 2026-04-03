@@ -219,6 +219,7 @@ export const usePatientStore = defineStore("patient", () => {
           image_positions: imageUrl,
           patient_id: patient.id,
           action_time: now,
+          is_delayed: patient.status === "warning",
         });
 
       if (logError) {
@@ -296,6 +297,7 @@ export const usePatientStore = defineStore("patient", () => {
           patient_id: newRecordId, // ID from the master record
           image_positions: imageUrl,
           action_time: now,
+          is_delayed: false,
         });
 
       if (logError) {
@@ -319,6 +321,19 @@ export const usePatientStore = defineStore("patient", () => {
 
     if (error) {
       console.error("Error fetching logs:", error);
+      return [];
+    }
+    return data || [];
+  };
+
+  const fetchAllLogs = async () => {
+    const { data, error } = await supabase
+      .from("tb_patient_logs")
+      .select("*")
+      .order("action_time", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching all logs:", error);
       return [];
     }
     return data || [];
@@ -389,6 +404,7 @@ export const usePatientStore = defineStore("patient", () => {
     takeAction,
     submitNewPatientForm,
     fetchLogs,
+    fetchAllLogs,
     fetchPatientById,
     deletePatient,
     simulateAlert,

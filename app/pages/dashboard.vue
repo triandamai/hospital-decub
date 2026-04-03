@@ -77,6 +77,21 @@
                     </svg>
                     Laporan Baru
                 </NuxtLink>
+                <NuxtLink to="/reports" class="secondary-btn">
+                    <svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    >
+                        <path d="M12 20v-6M6 20V10M18 20V4"></path>
+                    </svg>
+                    Statistik
+                </NuxtLink>
             </div>
         </header>
 
@@ -930,6 +945,27 @@ onUnmounted(() => {
 .primary-btn:hover {
     transform: translateY(-2px);
     box-shadow: 0 8px 20px rgba(99, 102, 241, 0.6);
+}
+
+.secondary-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.8rem 1.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    color: var(--text-light);
+    font-family: inherit;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+
+.secondary-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
 }
 
 .dashboard-content {
@@ -1790,12 +1826,20 @@ onUnmounted(() => {
 
     .header-actions {
         width: 100%;
-        justify-content: space-between;
+        display: flex;
+        gap: 0.8rem;
+        flex-wrap: wrap;
     }
 
-    .primary-btn {
+    .primary-btn, .secondary-btn {
         flex: 1;
         justify-content: center;
+        padding: 0.7rem 0.5rem;
+        font-size: 0.9rem;
+    }
+
+    .audio-toggle-btn {
+        flex-shrink: 0;
     }
 
     .dashboard-title {
